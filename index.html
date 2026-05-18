@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>議事録ビューアー</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a2e;
+    --ink-light: #4a4a6a;
+    --paper: #f5f0e8;
+    --paper-dark: #ede8dc;
+    --accent: #c0392b;
+    --accent-light: #e74c3c;
+    --rule: #d4cfc4;
+    --white: #fefefe;
+    --shadow: rgba(26,26,46,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* ── ヘッダー ── */
+  header {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 1.2rem 1.5rem;
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px var(--shadow);
+  }
+  header h1 {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  header span {
+    font-size: 0.72rem;
+    color: #9090b0;
+    letter-spacing: 0.03em;
+  }
+
+  /* ── 検索パネル ── */
+  .search-panel {
+    background: var(--white);
+    border-bottom: 1px solid var(--rule);
+    padding: 1.2rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .search-row {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .search-panel input,
+  .search-panel select {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 0.9rem;
+    border: 1.5px solid var(--rule);
+    border-radius: 4px;
+    padding: 0.55rem 0.8rem;
+    background: var(--paper);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-panel input:focus,
+  .search-panel select:focus {
+    border-color: var(--accent);
+  }
+  #speaker-input { flex: 1; min-width: 120px; }
+  #party-input   { flex: 1; min-width: 120px; }
+  #keyword-input { flex: 2; min-width: 160px; }
+  #session-select { min-width: 140px; }
+
+  .btn {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 500;
+    padding: 0.55rem 1.2rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-light); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--ink-light);
+    border: 1.5px solid var(--rule);
+  }
+  .btn-secondary:hover { background: var(--paper-dark); }
+
+  .note {
+    font-size: 0.72rem;
+    color: var(--ink-light);
+    line-height: 1.5;
+  }
+
+  /* ── ローディング ── */
+  #loading {
+    display: none;
+    text-align: center;
+    padding: 2rem;
+    color: var(--ink-light);
+    font-size: 0.85rem;
+  }
+  .spinner {
+    width: 28px; height: 28px;
+    border: 3px solid var(--rule);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 0.8rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── エラー ── */
+  #error {
+    display: none;
+    margin: 1rem 1.5rem;
+    padding: 0.8rem 1rem;
+    background: #fdf0f0;
+    border-left: 3px solid var(--accent);
+    font-size: 0.85rem;
+    color: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* ── 結果ヘッダー ── */
+  #results-header {
+    display: none;
+    padding: 0.8rem 1.5rem;
+    font-size: 0.8rem;
+    color: var(--ink-light);
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper-dark);
+  }
+
+  /* ── 発言カード ── */
+  #results { padding: 1rem 1.2rem; display: flex; flex-direction: column; gap: 0.8rem; }
+
+  .speech-card {
+    background: var(--white);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px var(--shadow);
+    transition: box-shadow 0.2s;
+  }
+  .speech-card:hover { box-shadow: 0 3px 12px var(--shadow); }
+
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.65rem 1rem;
+    background: var(--paper-dark);
+    border-bottom: 1px solid var(--rule);
+    flex-wrap: wrap;
+  }
+  .speaker-name {
+    font-family: 'Noto Serif JP', serif;
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: var(--ink);
+  }
+  .speaker-group {
+    font-size: 0.72rem;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    letter-spacing: 0.02em;
+  }
+  .meta-right {
+    margin-left: auto;
+    text-align: right;
+    font-size: 0.72rem;
+    color: var(--ink-light);
+    line-height: 1.5;
+  }
+
+  .card-body { padding: 0.9rem 1rem; }
+
+  /* ハイライト */
+  .speech-text {
+    font-size: 0.88rem;
+    line-height: 1.85;
+    color: var(--ink);
+    white-space: pre-wrap;
+  }
+  .speech-text mark {
+    background: #fef3cd;
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 1px;
+  }
+
+  /* 文脈ブロック */
+  .context-block {
+    margin-top: 0.8rem;
+    border-top: 1px dashed var(--rule);
+    padding-top: 0.8rem;
+  }
+  .context-label {
+    font-size: 0.7rem;
+    color: var(--ink-light);
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+  }
+  .context-item {
+    padding: 0.5rem 0.7rem;
+    margin-bottom: 0.4rem;
+    border-left: 2px solid var(--rule);
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: var(--ink-light);
+  }
+  .context-item.is-target {
+    border-left-color: var(--accent);
+    color: var(--ink);
+    background: #fff8f8;
+  }
+  .context-speaker {
+    font-weight: 500;
+    font-size: 0.75rem;
+    margin-bottom: 0.2rem;
+    color: var(--ink);
+  }
+
+  .card-actions {
+    padding: 0.6rem 1rem;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .btn-sm {
+    font-size: 0.78rem;
+    padding: 0.35rem 0.8rem;
+  }
+
+  /* ── ページネーション ── */
+  #pagination {
+    display: none;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  /* ── フッター ── */
+  footer {
+    text-align: center;
+    padding: 1.5rem;
+    font-size: 0.72rem;
+    color: var(--ink-light);
+    border-top: 1px solid var(--rule);
+    margin-top: 2rem;
+  }
+
+  @media (max-width: 480px) {
+    header { padding: 1rem; }
+    .search-panel { padding: 1rem; }
+    #results { padding: 0.8rem; }
+    .card-meta { gap: 0.4rem; }
+    .meta-right { font-size: 0.68rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏛 議事録ビューアー</h1>
+  <span>国会会議録検索API — 非公式ビューアー</span>
+</header>
+
+<div class="search-panel">
+  <div class="search-row">
+    <input id="speaker-input" type="text" placeholder="発言者名（例：石破茂）">
+    <input id="party-input"   type="text" placeholder="所属会派（例：自由民主党）">
+    <select id="session-select">
+      <option value="">— 期間を選択 —</option>
+      <option value="1">直近1国会</option>
+      <option value="3">直近3国会</option>
+      <option value="5">直近5国会</option>
+      <option value="all">制限なし</option>
+    </select>
+  </div>
+  <div class="search-row">
+    <input id="keyword-input" type="text" placeholder="キーワード（例：増税　防衛費）">
+    <button class="btn btn-primary" onclick="doSearch()">検索</button>
+    <button class="btn btn-secondary" onclick="clearAll()">クリア</button>
+  </div>
+  <p class="note">
+    ※ 発言者名・会派・キーワードを組み合わせて検索できます。<br>
+    ※ 会議録収録には開催から3〜8週間ほどかかるため、直近の発言は表示されない場合があります。
+  </p>
+</div>
+
+<div id="loading"><div class="spinner"></div>APIを呼び出し中…</div>
+<div id="error"></div>
+<div id="results-header"></div>
+<div id="results"></div>
+<div id="pagination" style="display:none; justify-content:center; gap:0.5rem; padding:1.5rem; flex-wrap:wrap;"></div>
+
+<footer>
+  データ提供：<a href="https://kokkai.ndl.go.jp/api.html" target="_blank" style="color:var(--ink-light)">国会会議録検索システム（国立国会図書館）</a>
+</footer>
+
+<script>
+/* ============================================================
+   国会議事録 APIクライアント  ─ 学習用コメント付き
+   ============================================================
+
+   【API の基本情報】
+   エンドポイント: https://kokkai.ndl.go.jp/api/speech
+   メソッド: GET（URLにパラメータを付けて送る）
+   認証: 不要（APIキー等なし）
+   レスポンス形式: JSON（または XML）
+   CORSポリシー: 許可済み → ブラウザのJSから直接呼べる
+
+   【主な検索パラメータ】
+   any       … 発言に含まれるキーワード（スペース区切りでAND検索）
+   speaker   … 発言者名（部分一致）
+   speakerGroup … 所属会派
+   from / until … 検索対象の期間（YYYY-MM-DD形式）
+   maximumRecords … 1回の取得件数（最大100）
+   startRecord    … 取得開始位置（ページネーションに使う）
+   recordPacking  … "json" を指定するとJSON形式で返ってくる
+
+   ============================================================ */
+
+// ── 定数 ──────────────────────────────────────────────
+// APIのベースURL。末尾の "speech" は「発言単位」での検索を意味する。
+// 他に "meeting"（会議単位）や "meeting_list" がある。
+const API_BASE = 'https://kokkai.ndl.go.jp/api/speech';
+
+// 1回の検索で取得する最大件数
+const PAGE_SIZE = 10;
+
+// 現在のページ状態を保持するオブジェクト
+let state = {
+  params: null,       // 最後に使った検索パラメータ
+  currentPage: 1,     // 現在のページ番号
+  totalRecords: 0,    // 総ヒット件数
+};
+
+
+// ── ユーティリティ ──────────────────────────────────
+// 国会回次の最大値を取得する（直近N国会を計算するため）
+async function getCurrentSession() {
+  // まず1件だけ取得して、最新の回次を調べる
+  const url = `${API_BASE}?maximumRecords=1&recordPacking=json`;
+  const res = await fetch(url);
+  const data = await res.json();
+  const records = data.speechRecord || [];
+  if (records.length === 0) return 220; // フォールバック値
+  return parseInt(records[0].session, 10);
+}
+
+// 期間セレクタの値を「国会回次の範囲」に変換する
+async function resolveSessionRange(val) {
+  if (!val || val === 'all') return {};
+  const current = await getCurrentSession();
+  const from = current - parseInt(val, 10) + 1;
+  return { sessionFrom: Math.max(1, from), sessionTo: current };
+}
+
+
+// ── メイン検索関数 ──────────────────────────────────
+async function doSearch(page = 1) {
+  const speaker  = document.getElementById('speaker-input').value.trim();
+  const party    = document.getElementById('party-input').value.trim();
+  const keyword  = document.getElementById('keyword-input').value.trim();
+  const sessionVal = document.getElementById('session-select').value;
+
+  // 最低1つは条件が必要（APIの仕様）
+  if (!speaker && !party && !keyword) {
+    showError('発言者名、会派、キーワードのいずれかを入力してください。');
+    return;
+  }
+
+  showLoading(true);
+  clearError();
+  clearResults();
+
+  try {
+    /* ----------------------------------------------------------
+       【ステップ1】検索パラメータを組み立てる
+
+       URLSearchParams を使うと、日本語などの特殊文字を
+       自動でURLエンコード（%E5%A2%97%E7%A8%8E のような形式）
+       してくれる。手動でencodeURIComponent()する必要がない。
+    ---------------------------------------------------------- */
+    const sessionRange = await resolveSessionRange(sessionVal);
+
+    const params = new URLSearchParams();
+
+    // "recordPacking=json" を指定しないとXMLで返ってくる
+    params.set('recordPacking', 'json');
+
+    // 取得件数と開始位置（ページネーション）
+    params.set('maximumRecords', PAGE_SIZE);
+    params.set('startRecord', (page - 1) * PAGE_SIZE + 1);
+
+    // 検索条件（空文字の場合はパラメータを追加しない）
+    if (keyword) params.set('any', keyword);
+    if (speaker) params.set('speaker', speaker);
+    if (party)   params.set('speakerGroup', party);
+    if (sessionRange.sessionFrom) {
+      params.set('sessionFrom', sessionRange.sessionFrom);
+      params.set('sessionTo', sessionRange.sessionTo);
+    }
+
+    // 状態を保存（次のページ読み込みで再利用するため）
+    state.params = params;
+    state.currentPage = page;
+
+    /* ----------------------------------------------------------
+       【ステップ2】fetch() でAPIを呼び出す
+
+       fetch() はブラウザ組み込みのHTTP通信関数。
+       GET の場合はURLにパラメータを付けるだけでよい。
+
+       await を使うことで、レスポンスが返るまで待機する。
+       （非同期処理 = サーバーからの応答を待ちながら
+        ブラウザがフリーズしないようにする仕組み）
+    ---------------------------------------------------------- */
+    const url = `${API_BASE}?${params.toString()}`;
+    console.log('📡 APIリクエストURL:', url); // ← 開発者ツールで確認できる
+
+    const response = await fetch(url);
+
+    /* ----------------------------------------------------------
+       【ステップ3】レスポンスのステータスを確認する
+
+       HTTPステータスコードが 200番台でなければエラー。
+       response.ok は 200〜299 のときに true になる。
+    ---------------------------------------------------------- */
+    if (!response.ok) {
+      throw new Error(`HTTPエラー: ${response.status}`);
+    }
+
+    /* ----------------------------------------------------------
+       【ステップ4】レスポンスをJSONとして解析する
+
+       response.json() は、レスポンスのテキストをJSONとして
+       パース（解析）してJavaScriptオブジェクトに変換する。
+       これも非同期なので await が必要。
+    ---------------------------------------------------------- */
+    const data = await response.json();
+    console.log('📦 APIレスポンス:', data); // ← 構造を確認するのに便利
+
+    /* ----------------------------------------------------------
+       【ステップ5】レスポンスの構造を理解する
+
+       国会議事録APIのJSONレスポンスは以下の構造:
+       {
+         numberOfRecords: "1234",    // 総ヒット件数（文字列！）
+         numberOfReturn:  "10",      // 今回返ってきた件数
+         startRecord:     "1",       // 開始位置
+         speechRecord: [             // 発言の配列
+           {
+             speechID:      "…",
+             session:       "221",   // 国会回次
+             nameOfHouse:   "衆議院",
+             nameOfMeeting: "本会議",
+             date:          "2023-01-30",
+             speaker:       "岸田文雄",
+             speakerGroup:  "自由民主党・無所属の会",
+             speakerPosition: "内閣総理大臣",
+             speech:        "…発言内容…",
+             speechURL:     "https://…",
+           },
+           …
+         ]
+       }
+    ---------------------------------------------------------- */
+    const total = parseInt(data.numberOfRecords, 10) || 0;
+    const speeches = data.speechRecord || [];
+
+    state.totalRecords = total;
+
+    if (total === 0) {
+      showError('該当する発言が見つかりませんでした。検索条件を変えてみてください。');
+      return;
+    }
+
+    // 結果件数を表示
+    const headerEl = document.getElementById('results-header');
+    headerEl.style.display = 'block';
+    headerEl.textContent = `${total.toLocaleString()} 件ヒット　（${page}ページ目 / 全${Math.ceil(total/PAGE_SIZE)}ページ）`;
+
+    // 発言カードを描画
+    renderSpeeches(speeches, keyword);
+
+    // ページネーションを描画
+    renderPagination(total, page);
+
+  } catch (err) {
+    console.error('APIエラー:', err);
+    showError(`エラーが発生しました: ${err.message}`);
+  } finally {
+    showLoading(false);
+  }
+}
+
+
+// ── 文脈（前後の発言）を取得する ────────────────────
+async function fetchContext(speechID, issueID, targetOrder) {
+  /* ----------------------------------------------------------
+     【文脈取得の仕組み】
+
+     国会議事録APIは「発言番号（speechOrder）」を持っている。
+     同じ会議録ID（issueID）内で、発言番号の前後を取得すれば
+     「やり取りの流れ」が再現できる。
+
+     ここでは issueID（会議録ID）で絞り込み、
+     前後3発言ずつ＋対象発言を取得する。
+  ---------------------------------------------------------- */
+  const params = new URLSearchParams();
+  params.set('recordPacking', 'json');
+  params.set('issueID', issueID);
+  params.set('maximumRecords', 100); // その会議の全発言を取得
+
+  const url = `${API_BASE}?${params.toString()}`;
+  console.log('📡 文脈取得URL:', url);
+
+  const res = await fetch(url);
+  const data = await res.json();
+  const all = data.speechRecord || [];
+
+  // 対象発言のインデックスを特定
+  const idx = all.findIndex(s => parseInt(s.speechOrder, 10) === parseInt(targetOrder, 10));
+  if (idx === -1) return all.slice(0, 7); // フォールバック
+
+  // 前後3件ずつを切り出す
+  const start = Math.max(0, idx - 3);
+  const end   = Math.min(all.length, idx + 4);
+  return { items: all.slice(start, end), targetIdx: idx - start };
+}
+
+
+// ── 描画系 ──────────────────────────────────────────
+function renderSpeeches(speeches, keyword) {
+  const container = document.getElementById('results');
+  container.innerHTML = '';
+
+  speeches.forEach(speech => {
+    const card = document.createElement('div');
+    card.className = 'speech-card';
+    card.innerHTML = `
+      <div class="card-meta">
+        <span class="speaker-name">${esc(speech.speaker || '不明')}</span>
+        ${speech.speakerGroup ? `<span class="speaker-group">${esc(speech.speakerGroup)}</span>` : ''}
+        ${speech.speakerPosition ? `<span style="font-size:0.72rem;color:var(--ink-light)">${esc(speech.speakerPosition)}</span>` : ''}
+        <div class="meta-right">
+          ${esc(speech.date || '')}<br>
+          第${speech.session}回国会 ${esc(speech.nameOfMeeting || '')}
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="speech-text">${highlight(truncate(speech.speech, 300), keyword)}</div>
+      </div>
+      <div class="card-actions">
+        <button class="btn btn-secondary btn-sm"
+          onclick="loadContext(this, '${esc(speech.speechID)}', '${esc(speech.issueID)}', '${speech.speechOrder}')">
+          ▼ 前後の発言を見る
+        </button>
+        <a href="${esc(speech.speechURL)}" target="_blank"
+          class="btn btn-secondary btn-sm" style="text-decoration:none">
+          公式ページ →
+        </a>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+async function loadContext(btn, speechID, issueID, order) {
+  const card = btn.closest('.speech-card');
+
+  // すでに展開済みなら閉じる
+  const existing = card.querySelector('.context-block');
+  if (existing) { existing.remove(); btn.textContent = '▼ 前後の発言を見る'; return; }
+
+  btn.textContent = '読み込み中…';
+  btn.disabled = true;
+
+  try {
+    const { items, targetIdx } = await fetchContext(speechID, issueID, order);
+
+    const block = document.createElement('div');
+    block.className = 'context-block';
+    block.innerHTML = `<div class="context-label">前後の発言（${items.length}件）</div>`;
+
+    items.forEach((s, i) => {
+      const item = document.createElement('div');
+      item.className = 'context-item' + (i === targetIdx ? ' is-target' : '');
+      item.innerHTML = `
+        <div class="context-speaker">${esc(s.speaker || '不明')}
+          ${s.speakerGroup ? `<span style="font-size:0.7rem;color:var(--ink-light)">（${esc(s.speakerGroup)}）</span>` : ''}
+        </div>
+        <div>${esc(truncate(s.speech, 200))}</div>
+      `;
+      block.appendChild(item);
+    });
+
+    card.querySelector('.card-body').appendChild(block);
+    btn.textContent = '▲ 閉じる';
+  } catch(e) {
+    btn.textContent = '取得失敗';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderPagination(total, current) {
+  const pages = Math.ceil(total / PAGE_SIZE);
+  const el = document.getElementById('pagination');
+  if (pages <= 1) { el.style.display = 'none'; return; }
+
+  el.style.display = 'flex';
+  el.innerHTML = '';
+
+  const addBtn = (label, page, disabled = false) => {
+    const b = document.createElement('button');
+    b.className = 'btn btn-secondary btn-sm';
+    b.textContent = label;
+    b.disabled = disabled;
+    if (!disabled) b.onclick = () => { doSearch(page); window.scrollTo(0,0); };
+    if (page === current) { b.style.background = 'var(--ink)'; b.style.color = 'var(--paper)'; }
+    el.appendChild(b);
+  };
+
+  if (current > 1) addBtn('‹ 前へ', current - 1);
+
+  // 現在ページの前後2ページ分を表示
+  for (let p = Math.max(1, current-2); p <= Math.min(pages, current+2); p++) {
+    addBtn(p, p);
+  }
+
+  if (current < pages) addBtn('次へ ›', current + 1);
+}
+
+
+// ── ヘルパー ────────────────────────────────────────
+// XSS対策：ユーザーデータを安全にHTMLに埋め込む
+function esc(str) {
+  return String(str || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// キーワードをハイライト（mark タグで黄色にする）
+function highlight(text, keyword) {
+  if (!keyword) return esc(text);
+  const words = keyword.split(/\s+/).filter(Boolean);
+  let result = esc(text);
+  words.forEach(w => {
+    const re = new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    result = result.replace(re, `<mark>${w}</mark>`);
+  });
+  return result;
+}
+
+// 長い発言を省略
+function truncate(text, len) {
+  if (!text) return '';
+  return text.length > len ? text.slice(0, len) + '…' : text;
+}
+
+function showLoading(show) {
+  document.getElementById('loading').style.display = show ? 'block' : 'none';
+}
+function showError(msg) {
+  const el = document.getElementById('error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function clearError()   { document.getElementById('error').style.display = 'none'; }
+function clearResults() {
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('results-header').style.display = 'none';
+  document.getElementById('pagination').style.display = 'none';
+}
+function clearAll() {
+  ['speaker-input','party-input','keyword-input'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('session-select').value = '';
+  clearError(); clearResults();
+}
+
+// Enterキーで検索
+document.querySelectorAll('input').forEach(el => {
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+});
+</script>
+</body>
+</html>
