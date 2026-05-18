@@ -775,6 +775,12 @@ function clearAll() {
 document.querySelectorAll('input').forEach(el => {
   el.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
 });
+
+// 例での検索機能を追加
+function quickSearch(word) {
+  document.getElementById('keyword-input').value = word;
+  doSearch();
+}
 </script>
 </body>
 </html>
