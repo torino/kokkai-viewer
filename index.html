@@ -51,7 +51,47 @@
     color: #9090b0;
     letter-spacing: 0.03em;
   }
+  /* ── 説明文 ── */
+.intro {
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-dark);
+}
 
+.intro-main {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--ink);
+}
+
+.intro-main strong {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.intro-sub {
+  margin-top: 0.7rem;
+  font-size: 0.82rem;
+  line-height: 1.7;
+  color: var(--ink-light);
+}
+
+.intro-points {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.intro-points span {
+  font-size: 0.72rem;
+  padding: 0.3rem 0.6rem;
+  background: var(--white);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: var(--ink-light);
+}
   /* ── 検索パネル ── */
   .search-panel {
     background: var(--white);
@@ -294,7 +334,26 @@
   <h1>🏛 議事録ビューアー</h1>
   <span>国会会議録検索API — 非公式ビューアー</span>
 </header>
+  /* ── 趣旨説明 ── */
+<section class="intro">
+  <p class="intro-main">
+    国会会議録を、
+    <strong>「発言単体」ではなく「前後の文脈ごと」</strong>
+    読むための非公式ビューアーです。
+  </p>
 
+  <p class="intro-sub">
+    SNSや記事で引用された発言について、
+    実際のやり取りや会話の流れを確認できます。
+  </p>
+
+  <div class="intro-points">
+    <span>発言者検索</span>
+    <span>会派検索</span>
+    <span>前後発言表示</span>
+    <span>スマホ対応</span>
+  </div>
+</section>
 <div class="search-panel">
   <div class="search-row">
     <input id="speaker-input" type="text" placeholder="発言者名（例：石破茂）">
