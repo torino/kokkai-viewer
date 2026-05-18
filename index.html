@@ -334,7 +334,6 @@
   <h1>🏛 議事録ビューアー</h1>
   <span>国会会議録検索API — 非公式ビューアー</span>
 </header>
-  /* ── 趣旨説明 ── */
 <section class="intro">
   <p class="intro-main">
     国会会議録を、
@@ -347,12 +346,6 @@
     実際のやり取りや会話の流れを確認できます。
   </p>
 
-  <div class="intro-points">
-    <span>発言者検索</span>
-    <span>会派検索</span>
-    <span>前後発言表示</span>
-    <span>スマホ対応</span>
-  </div>
 </section>
 <div class="search-panel">
   <div class="search-row">
@@ -371,6 +364,12 @@
     <button class="btn btn-primary" onclick="doSearch()">検索</button>
     <button class="btn btn-secondary" onclick="clearAll()">クリア</button>
   </div>
+  <div class="example-links">
+  <span>例：</span>
+  <button onclick="quickSearch('消費税')">消費税</button>
+  <button onclick="quickSearch('防衛費')">防衛費</button>
+  <button onclick="quickSearch('少子化')">少子化</button>
+</div>
   <p class="note">
     ※ 発言者名・会派・キーワードを組み合わせて検索できます。<br>
     ※ 会議録収録には開催から3〜8週間ほどかかるため、直近の発言は表示されない場合があります。
